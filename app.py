@@ -6,7 +6,7 @@ from datetime import datetime, date
 app = Flask(__name__)
 app.secret_key = "princess_inventory_secret_key_2026"
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.dirname(__    file__))
 DB_PATH = os.path.join(BASE_DIR, 'princess_inventory.db')
 
 def init_db():
@@ -68,7 +68,100 @@ def dashboard():
                            today_sales=round(today_sales, 2),
                            total_debt=round(total_debt, 2))
 
-# Add more routes later...
+@app.route('/products')
+def products():
+    search = request.args.get('search', '')
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    if search:
+        c.execute("SELECT * FROM products WHERE name LIKE ? ORDER BY name", (f'%{search}%',))
+    else:
+        c.execute("SELECT * FROM products ORDER BY name")
+    products_list = c.fetchall()
+    conn.close()
+    return render_template('products.html', products=products_list, search=search)
+
+@app.route('/add_product', methods=['GET', 'POST'])
+def add_product():
+    if request.method == 'POST':
+        name = request.form['name']
+        category = request.form['category']
+        price = float(request.form['price'])
+        stock = int(request.form['stock'])
+        
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO products (name, category, price, stock, last_updated) VALUES (?, ?, ?, ?, ?)",
+                  (name, category, price, stock, datetime.now().strftime("%Y-%m-%d %H:%M")))
+        conn.commit()
+        conn.close()
+        flash('Product added successfully!', 'success')
+        return redirect(url_for('products'))
+    return render_template('add_product.html')
+
+@app.route('/update_stock/<int:product_id>', methods=['POST'])
+def update_stock(product_id):
+    action = request.form['action']
+    quantity = int(request.form['quantity'])
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    if action == 'add':
+        c.execute("UPDATE products SET stock = stock + ?, last_updated = ? WHERE id = ?", 
+                  (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+    else:
+        c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?", 
+                  (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+    conn.commit()
+    conn.close()
+    flash('Stock updated!', 'success')
+    return redirect(url_for('products'))
+
+@app.route('/sales', methods=['GET', 'POST'])
+def sales():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM products WHERE stock > 0 ORDER BY name")
+    products = c.fetchall()
+    
+    if request.method == 'POST':
+        product_id = int(request.form['product_id'])
+        quantity = int(request.form['quantity'])
+        customer_name = request.form.get('customer_name', '').strip()
+        is_credit = 1 if customer_name else 0
+        sale_date = request.form.get('sale_date', date.today().isoformat())
+        
+        c.execute("SELECT name, price, stock FROM products WHERE id = ?", (product_id,))
+        product = c.fetchone()
+        
+        if product and product['stock'] >= quantity:
+            total_amount = product['price'] * quantity
+            c.execute("""INSERT INTO sales 
+                        (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                      (product_id, product['name'], quantity, total_amount, sale_date, customer_name, is_credit))
+            
+            c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?",
+                      (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+            
+            if is_credit and customer_name:
+                c.execute("INSERT INTO debts (customer_name, amount, remaining, date) VALUES (?, ?, ?, ?)",
+                          (customer_name, total_amount, total_amount, sale_date))
+            conn.commit()
+            flash('Sale recorded successfully!', 'success')
+        else:
+            flash('Not enough stock!', 'danger')
+        return redirect(url_for('sales'))
+    
+    filter_date = request.args.get('filter_date')
+    if filter_date:
+        c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (filter_date,))
+    else:
+        c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
+    sales_list = c.fetchall()
+    conn.close()
+    return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
