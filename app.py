@@ -3,7 +3,7 @@ import sqlite3
 import os
 from datetime import datetime, date
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.secret_key = "princess_inventory_secret_key_2026"
 
 BASE_DIR = os.path.abspath(os.path.dirname(_file_))
@@ -70,6 +70,6 @@ def dashboard():
 
 # Add more routes later...
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
