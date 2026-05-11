@@ -6,7 +6,7 @@ from datetime import datetime, date
 app = Flask(__name__)
 app.secret_key = "princess_inventory_secret_key_2026"
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.dirname(_file_))
 DB_PATH = os.path.join(BASE_DIR, 'princess_inventory.db')
 
 def init_db():
@@ -46,27 +46,17 @@ def dashboard():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    
     c.execute("SELECT COUNT(*) as total FROM products")
     total_products = c.fetchone()['total']
-    
     c.execute("SELECT COUNT(*) as low FROM products WHERE stock < 10")
     low_stock = c.fetchone()['low']
-    
     today = date.today().isoformat()
     c.execute("SELECT SUM(total_amount) as today_sales FROM sales WHERE sale_date = ?", (today,))
     today_sales = c.fetchone()['today_sales'] or 0
-    
     c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
     total_debt = c.fetchone()['total_debt'] or 0
-    
     conn.close()
-    
-    return render_template('dashboard.html', 
-                           total_products=total_products, 
-                           low_stock=low_stock,
-                           today_sales=round(today_sales, 2),
-                           total_debt=round(total_debt, 2))
+    return render_template('dashboard.html', total_products=total_products, low_stock=low_stock, today_sales=round(today_sales, 2), total_debt=round(total_debt, 2))
 
 @app.route('/products')
 def products():
@@ -89,7 +79,6 @@ def add_product():
         category = request.form['category']
         price = float(request.form['price'])
         stock = int(request.form['stock'])
-        
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("INSERT INTO products (name, category, price, stock, last_updated) VALUES (?, ?, ?, ?, ?)",
@@ -129,7 +118,6 @@ def sales():
         product_id = int(request.form['product_id'])
         quantity = int(request.form['quantity'])
         customer_name = request.form.get('customer_name', '').strip()
-        is_credit = 1 if customer_name else 0
         sale_date = request.form.get('sale_date', date.today().isoformat())
         
         c.execute("SELECT name, price, stock FROM products WHERE id = ?", (product_id,))
@@ -137,15 +125,11 @@ def sales():
         
         if product and product['stock'] >= quantity:
             total_amount = product['price'] * quantity
-            c.execute("""INSERT INTO sales 
-                        (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
+            c.execute("""INSERT INTO sales (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                      (product_id, product['name'], quantity, total_amount, sale_date, customer_name, is_credit))
-            
-            c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?",
-                      (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
-            
-            if is_credit and customer_name:
+                      (product_id, product['name'], quantity, total_amount, sale_date, customer_name, 1 if customer_name else 0))
+            c.execute("UPDATE products SET stock = stock - ? WHERE id = ?", (quantity, product_id))
+            if customer_name:
                 c.execute("INSERT INTO debts (customer_name, amount, remaining, date) VALUES (?, ?, ?, ?)",
                           (customer_name, total_amount, total_amount, sale_date))
             conn.commit()
@@ -154,15 +138,11 @@ def sales():
             flash('Not enough stock!', 'danger')
         return redirect(url_for('sales'))
     
-    filter_date = request.args.get('filter_date')
-    if filter_date:
-        c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (filter_date,))
-    else:
-        c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
+    c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
     sales_list = c.fetchall()
     conn.close()
-    return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
+    return render_template('sales.html', products=products, sales=sales_list)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False
