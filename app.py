@@ -6,7 +6,7 @@ from datetime import datetime, date
 app = Flask(__name__)
 app.secret_key = "princess_inventory_secret_key_2026"
 
-BASE_DIR = os.path.abspath(os.path.dirname(_file_))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'princess_inventory.db')
 
 def init_db():
