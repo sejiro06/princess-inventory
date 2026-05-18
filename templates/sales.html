@@ -13,17 +13,17 @@
     <a href="/products" class="btn btn-primary mb-3">📦 Products</a>
     <a href="/debts" class="btn btn-warning mb-3">📋 View All Utang</a>
 
-    <!-- Record Sale / Utang Form -->
+    <!-- Record New Sale / Utang -->
     <div class="card mt-4">
-        <div class="card-header">New Transaction</div>
+        <div class="card-header">New Sale / Utang</div>
         <div class="card-body">
             <form method="POST">
                 <div class="row">
-                    <div class="col-md-5 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label>Product</label>
                         <select name="product_id" class="form-select" required>
                             {% for p in products %}
-                            <option value="{{ p['id'] }}">{{ p['name'] }} (Stock: {{ p['stock'] }}) - ₱{{ p['price'] }}</option>
+                            <option value="{{ p['id'] }}">{{ p['name'] }} - ₱{{ p['price'] }} (Stock: {{ p['stock'] }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -31,9 +31,13 @@
                         <label>Quantity</label>
                         <input type="number" name="quantity" class="form-control" value="1" min="1" required>
                     </div>
-                    <div class="col-md-5 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label>Customer Name (for Utang)</label>
-                        <input type="text" name="customer_name" class="form-control" placeholder="Leave blank if cash sale">
+                        <input type="text" name="customer_name" class="form-control" placeholder="Leave blank if cash">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label>Date</label>
+                        <input type="date" name="sale_date" class="form-control" value="{{ '' }}">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success btn-lg">Record Sale / Utang</button>
@@ -41,29 +45,9 @@
         </div>
     </div>
 
-    <h4 class="mt-5">Recent Transactions</h4>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Total</th>
-                <th>Customer</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for s in sales %}
-            <tr>
-                <td>{{ s['sale_date'] }}</td>
-                <td>{{ s['product_name'] }}</td>
-                <td>{{ s['quantity'] }}</td>
-                <td>₱{{ s['total_amount'] }}</td>
-                <td>{{ s['customer_name'] or 'Cash' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-</body>
-</html>
+    <!-- Daily Sales Filter -->
+    <div class="mt-5">
+        <h4>Daily Sales Report</h4>
+        <form method="GET" class="mb-3">
+            <input type="date" name="filter_date" value="{{ filter_date }}" class="form-control w-50 d-inline">
+            <button type="submit" class
