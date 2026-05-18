@@ -3,10 +3,10 @@ import sqlite3
 import os
 from datetime import datetime, date
 
-app = Flask(__name__)
+app = Flask(_name_)
 app.secret_key = "princess_inventory_secret_key_2026"
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.dirname(_file_))
 DB_PATH = os.path.join(BASE_DIR, 'princess_inventory.db')
 
 def init_db():
@@ -133,15 +133,30 @@ def sales():
                 c.execute("INSERT INTO debts (customer_name, amount, remaining, date) VALUES (?, ?, ?, ?)",
                           (customer_name, total_amount, total_amount, sale_date))
             conn.commit()
-            flash('Sale recorded successfully!', 'success')
+            flash('Sale / Utang recorded!', 'success')
         else:
             flash('Not enough stock!', 'danger')
         return redirect(url_for('sales'))
     
-    c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
+    filter_date = request.args.get('filter_date')
+    if filter_date:
+        c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (filter_date,))
+    else:
+        c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
     sales_list = c.fetchall()
     conn.close()
-    return render_template('sales.html', products=products, sales=sales_list)
+    return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
+
+@app.route('/debts')
+def debts():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("""SELECT customer_name, SUM(remaining) as total_remaining, MAX(date) as last_date 
+                 FROM debts GROUP BY customer_name HAVING total_remaining > 0 ORDER BY total_remaining DESC""")
+    debt_list = c.fetchall()
+    conn.close()
+    return render_template('debts.html', debts=debt_list)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
