@@ -56,7 +56,11 @@ def dashboard():
     c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
     total_debt = c.fetchone()['total_debt'] or 0
     conn.close()
-    return render_template('dashboard.html', total_products=total_products, low_stock=low_stock, today_sales=round(today_sales, 2), total_debt=round(total_debt, 2))
+    return render_template('dashboard.html', 
+                           total_products=total_products, 
+                           low_stock=low_stock,
+                           today_sales=round(today_sales, 2),
+                           total_debt=round(total_debt, 2))
 
 @app.route('/products')
 def products():
@@ -125,27 +129,29 @@ def sales():
         
         if product and product['stock'] >= quantity:
             total_amount = product['price'] * quantity
-            c.execute("""INSERT INTO sales (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
+            
+            c.execute("""INSERT INTO sales 
+                        (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)""",
                       (product_id, product['name'], quantity, total_amount, sale_date, customer_name, 1 if customer_name else 0))
-            c.execute("UPDATE products SET stock = stock - ? WHERE id = ?", (quantity, product_id))
+            
+            c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?",
+                      (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+            
             if customer_name:
                 c.execute("INSERT INTO debts (customer_name, amount, remaining, date) VALUES (?, ?, ?, ?)",
                           (customer_name, total_amount, total_amount, sale_date))
+            
             conn.commit()
-            flash('Sale / Utang recorded!', 'success')
+            flash('Transaction recorded successfully!', 'success')
         else:
             flash('Not enough stock!', 'danger')
         return redirect(url_for('sales'))
     
-    filter_date = request.args.get('filter_date')
-    if filter_date:
-        c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (filter_date,))
-    else:
-        c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
+    c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
     sales_list = c.fetchall()
     conn.close()
-    return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
+    return render_template('sales.html', products=products, sales=sales_list)
 
 @app.route('/debts')
 def debts():
