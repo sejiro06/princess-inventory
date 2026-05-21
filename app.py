@@ -41,6 +41,7 @@ def init_db():
 
 init_db()
 
+# ====================== DASHBOARD ======================
 @app.route('/')
 def dashboard():
     selected_date = request.args.get('date', date.today().isoformat())
@@ -55,12 +56,19 @@ def dashboard():
     c.execute("SELECT COUNT(*) as low FROM products WHERE stock < 10")
     low_stock = c.fetchone()['low']
     
-    c.execute("SELECT SUM(total_amount) as day_sales FROM sales WHERE sale_date = ?", (selected_date,))
+    # Cash Sales on selected date
+    c.execute("SELECT SUM(total_amount) as day_sales FROM sales WHERE sale_date = ? AND (customer_name IS NULL OR customer_name = '')", (selected_date,))
     day_sales = c.fetchone()['day_sales'] or 0
     
+    # Utang on selected date
+    c.execute("SELECT SUM(total_amount) as day_utang FROM sales WHERE sale_date = ? AND customer_name IS NOT NULL AND customer_name != ''", (selected_date,))
+    day_utang = c.fetchone()['day_utang'] or 0
+    
+    # Total Outstanding Utang
     c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
     total_debt = c.fetchone()['total_debt'] or 0
     
+    # All transactions on selected date
     c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (selected_date,))
     transactions = c.fetchall()
     
@@ -70,6 +78,7 @@ def dashboard():
                            total_products=total_products, 
                            low_stock=low_stock,
                            day_sales=round(day_sales, 2),
+                           day_utang=round(day_utang, 2),
                            total_debt=round(total_debt, 2),
                            selected_date=selected_date,
                            transactions=transactions)
