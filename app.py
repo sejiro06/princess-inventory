@@ -35,8 +35,7 @@ def init_db():
                     customer_name TEXT NOT NULL,
                     amount REAL,
                     remaining REAL,
-                    date TEXT,
-                    status TEXT DEFAULT 'unpaid')''')
+                    date TEXT)''')
     conn.commit()
     conn.close()
 
@@ -53,21 +52,15 @@ def dashboard():
     total_products = c.fetchone()['total']
     c.execute("SELECT COUNT(*) as low FROM products WHERE stock < 10")
     low_stock = c.fetchone()['low']
-    
     c.execute("SELECT SUM(total_amount) as day_sales FROM sales WHERE sale_date = ? AND is_credit = 0", (selected_date,))
     day_sales = c.fetchone()['day_sales'] or 0
-    
     c.execute("SELECT SUM(total_amount) as day_utang FROM sales WHERE sale_date = ? AND is_credit = 1", (selected_date,))
     day_utang = c.fetchone()['day_utang'] or 0
-    
     c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
     total_debt = c.fetchone()['total_debt'] or 0
-    
     c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (selected_date,))
     transactions = c.fetchall()
-    
     conn.close()
-    
     return render_template('dashboard.html', 
                            total_products=total_products, 
                            low_stock=low_stock,
@@ -77,7 +70,53 @@ def dashboard():
                            selected_date=selected_date,
                            transactions=transactions)
 
-# Other routes (products, add_product, update_stock, sales) remain the same as before...
+@app.route('/products')
+def products():
+    search = request.args.get('search', '')
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    if search:
+        c.execute("SELECT * FROM products WHERE name LIKE ? ORDER BY name", (f'%{search}%',))
+    else:
+        c.execute("SELECT * FROM products ORDER BY name")
+    products_list = c.fetchall()
+    conn.close()
+    return render_template('products.html', products=products_list, search=search)
+
+@app.route('/add_product', methods=['GET', 'POST'])
+def add_product():
+    if request.method == 'POST':
+        name = request.form['name']
+        category = request.form['category']
+        price = float(request.form['price'])
+        stock = int(request.form['stock'])
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO products (name, category, price, stock, last_updated) VALUES (?, ?, ?, ?, ?)",
+                  (name, category, price, stock, datetime.now().strftime("%Y-%m-%d %H:%M")))
+        conn.commit()
+        conn.close()
+        flash('Product added successfully!', 'success')
+        return redirect(url_for('products'))
+    return render_template('add_product.html')
+
+@app.route('/update_stock/<int:product_id>', methods=['POST'])
+def update_stock(product_id):
+    action = request.form['action']
+    quantity = int(request.form['quantity'])
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    if action == 'add':
+        c.execute("UPDATE products SET stock = stock + ?, last_updated = ? WHERE id = ?", 
+                  (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+    else:
+        c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?", 
+                  (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
+    conn.commit()
+    conn.close()
+    flash('Stock updated!', 'success')
+    return redirect(url_for('products'))
 
 @app.route('/sales', methods=['GET', 'POST'])
 def sales():
@@ -127,25 +166,11 @@ def sales():
     conn.close()
     return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
 
-@app.route('/debts', methods=['GET', 'POST'])
+@app.route('/debts')
 def debts():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    
-    if request.method == 'POST':
-        debt_id = int(request.form['debt_id'])
-        payment = float(request.form['payment'])
-        
-        c.execute("SELECT remaining FROM debts WHERE id = ?", (debt_id,))
-        debt = c.fetchone()
-        if debt and payment > 0:
-            new_remaining = max(0, debt['remaining'] - payment)
-            c.execute("UPDATE debts SET remaining = ? WHERE id = ?", (new_remaining, debt_id))
-            conn.commit()
-            flash('Payment recorded!', 'success')
-        return redirect(url_for('debts'))
-    
     c.execute("""SELECT id, customer_name, amount, remaining, date 
                  FROM debts WHERE remaining > 0 ORDER BY remaining DESC""")
     debt_list = c.fetchall()
