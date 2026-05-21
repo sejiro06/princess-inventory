@@ -123,25 +123,25 @@ def sales():
         quantity = int(request.form['quantity'])
         customer_name = request.form.get('customer_name', '').strip()
         sale_date = request.form.get('sale_date', date.today().isoformat())
-        is_utang = request.form.get('is_utang') == '1'
         
         c.execute("SELECT name, price, stock FROM products WHERE id = ?", (product_id,))
         product = c.fetchone()
         
         if product and product['stock'] >= quantity:
             total_amount = product['price'] * quantity
+            is_credit = 1 if customer_name else 0
             
             c.execute("""INSERT INTO sales 
                         (product_id, product_name, quantity, total_amount, sale_date, customer_name, is_credit) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                      (product_id, product['name'], quantity, total_amount, sale_date, customer_name, 1 if (customer_name or is_utang) else 0))
+                      (product_id, product['name'], quantity, total_amount, sale_date, customer_name, is_credit))
             
             c.execute("UPDATE products SET stock = stock - ?, last_updated = ? WHERE id = ?",
                       (quantity, datetime.now().strftime("%Y-%m-%d %H:%M"), product_id))
             
-            if customer_name or is_utang:
+            if customer_name:
                 c.execute("INSERT INTO debts (customer_name, amount, remaining, date) VALUES (?, ?, ?, ?)",
-                          (customer_name or "Unknown", total_amount, total_amount, sale_date))
+                          (customer_name, total_amount, total_amount, sale_date))
             
             conn.commit()
             flash('Transaction recorded successfully!', 'success')
@@ -149,10 +149,14 @@ def sales():
             flash('Not enough stock!', 'danger')
         return redirect(url_for('sales'))
     
-    c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 30")
+    filter_date = request.args.get('filter_date')
+    if filter_date:
+        c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (filter_date,))
+    else:
+        c.execute("SELECT * FROM sales ORDER BY id DESC LIMIT 50")
     sales_list = c.fetchall()
     conn.close()
-    return render_template('sales.html', products=products, sales=sales_list)
+    return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
 
 @app.route('/debts')
 def debts():
