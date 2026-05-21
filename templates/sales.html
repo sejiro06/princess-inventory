@@ -11,12 +11,49 @@
     <h1>💰 Record Transaction</h1>
     <a href="/" class="btn btn-secondary mb-3">← Dashboard</a>
     <a href="/products" class="btn btn-primary mb-3">📦 Products</a>
-    <a href="/debts" class="btn btn-warning mb-3">📋 View Utang</a>
+    <a href="/debts" class="btn btn-warning mb-3">📋 View All Utang</a>
 
-    <div class="card mt-4">
-        <div class="card-header">New Transaction</div>
-        <div class="card-body">
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#cash">Cash Sale</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#utang">Utang</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Cash Sale Tab -->
+        <div class="tab-pane fade show active" id="cash">
             <form method="POST">
+                <input type="hidden" name="transaction_type" value="cash">
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <label>Product</label>
+                        <select name="product_id" class="form-select" required>
+                            {% for p in products %}
+                            <option value="{{ p['id'] }}">{{ p['name'] }} - ₱{{ p['price'] }} (Stock: {{ p['stock'] }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label>Quantity</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label>Date</label>
+                        <input type="date" name="sale_date" class="form-control" value="{{ filter_date or '' }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-lg">💵 Record Cash Sale</button>
+            </form>
+        </div>
+
+        <!-- Utang Tab -->
+        <div class="tab-pane fade" id="utang">
+            <form method="POST">
+                <input type="hidden" name="transaction_type" value="utang">
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label>Product</label>
@@ -31,27 +68,21 @@
                         <input type="number" name="quantity" class="form-control" value="1" min="1" required>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label>Customer Name</label>
-                        <input type="text" name="customer_name" class="form-control" placeholder="Required for Utang">
+                        <label>Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="Who utang?" required>
                     </div>
                     <div class="col-md-2 mb-3">
                         <label>Date</label>
-                        <input type="date" name="sale_date" class="form-control" value="">
+                        <input type="date" name="sale_date" class="form-control" value="{{ filter_date or '' }}">
                     </div>
                 </div>
-                
-                <button type="submit" name="transaction_type" value="cash" class="btn btn-success btn-lg me-3">
-                    💵 Record Cash Sale
-                </button>
-                <button type="submit" name="transaction_type" value="utang" class="btn btn-warning btn-lg">
-                    📝 Record as Utang
-                </button>
+                <button type="submit" class="btn btn-warning btn-lg">📝 Record as Utang</button>
             </form>
         </div>
     </div>
 
-    <!-- Recent Transactions -->
-    <h4 class="mt-5">Recent Transactions</h4>
+    <!-- Recent / Filtered Transactions -->
+    <h4 class="mt-5">Transactions {{ filter_date or ' (Recent)' }}</h4>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -81,5 +112,7 @@
         </tbody>
     </table>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
