@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Utang Records</title>
+    <title>Utang Records - Princess Inventory</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
@@ -18,26 +18,26 @@
             <a class="nav-link active" data-bs-toggle="tab" href="#unpaid">Unpaid Utang</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#paid">Paid Debts History</a>
+            <a class="nav-link" data-bs-toggle="tab" href="#paid">Paid History</a>
         </li>
     </ul>
 
     <div class="tab-content">
         <!-- Unpaid Tab -->
         <div class="tab-pane fade show active" id="unpaid">
-            {% if unpaid %}
+            {% if debts %}
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Customer</th>
-                        <th>Amount</th>
+                        <th>Customer Name</th>
+                        <th>Original Amount</th>
                         <th>Remaining</th>
-                        <th>Date</th>
+                        <th>Date Borrowed</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for d in unpaid %}
+                    {% for d in debts %}
                     <tr>
                         <td><strong>{{ d['customer_name'] }}</strong></td>
                         <td>₱{{ d['amount'] }}</td>
@@ -46,7 +46,7 @@
                         <td>
                             <form method="POST" class="d-inline">
                                 <input type="hidden" name="debt_id" value="{{ d['id'] }}">
-                                <input type="number" name="payment" step="0.01" placeholder="Pay" style="width:120px" class="form-control d-inline" required>
+                                <input type="number" name="payment" step="0.01" placeholder="Amount" style="width: 130px;" class="form-control d-inline" required>
                                 <button type="submit" class="btn btn-sm btn-success">Pay</button>
                             </form>
                         </td>
@@ -55,36 +55,14 @@
                 </tbody>
             </table>
             {% else %}
-            <p class="text-success">No outstanding utang. Good job!</p>
+            <div class="alert alert-success">No outstanding utang right now!</div>
             {% endif %}
         </div>
 
         <!-- Paid History Tab -->
         <div class="tab-pane fade" id="paid">
-            {% if paid %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Customer</th>
-                        <th>Original Amount</th>
-                        <th>Paid</th>
-                        <th>Date Paid</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in paid %}
-                    <tr>
-                        <td>{{ p['customer_name'] }}</td>
-                        <td>₱{{ p['amount'] }}</td>
-                        <td class="text-success">₱{{ p['amount'] - p['remaining'] }}</td>
-                        <td>{{ p['date'] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>No paid debts yet.</p>
-            {% endif %}
+            <p class="text-muted">Payment history will appear here once you record payments.</p>
+            <!-- We'll improve this later when we add payment history table -->
         </div>
     </div>
 </div>
