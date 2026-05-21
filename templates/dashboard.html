@@ -22,8 +22,8 @@
         </div>
     </div>
 
-    <div class="row text-center">
-        <div class="col-md-3 mb-3">
+    <div class="row text-center mb-4">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
                     <h5>Total Products</h5>
@@ -31,27 +31,27 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5>Sales on {{ selected_date }}</h5>
+                    <h5>Cash Sales ({{ selected_date }})</h5>
                     <h2 class="text-success">₱{{ day_sales }}</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5>Low Stock</h5>
-                    <h2 class="text-danger">{{ low_stock }}</h2>
+                    <h5>Utang Today</h5>
+                    <h2 class="text-warning">₱{{ day_utang }}</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h5>Total Utang</h5>
-                    <h2 class="text-warning">₱{{ total_debt }}</h2>
+                    <h5>Total Outstanding Utang</h5>
+                    <h2 class="text-danger">₱{{ total_debt }}</h2>
                 </div>
             </div>
         </div>
@@ -63,34 +63,52 @@
         <a href="/add_product" class="btn btn-outline-success btn-lg">+ Add Product</a>
     </div>
 
-    <!-- Transactions on Selected Date -->
-    <h4 class="mt-5">Transactions on {{ selected_date }}</h4>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Total</th>
-                <th>Type</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t in transactions %}
-            <tr>
-                <td>{{ t['product_name'] }}</td>
-                <td>{{ t['quantity'] }}</td>
-                <td>₱{{ t['total_amount'] }}</td>
-                <td>
-                    {% if t['customer_name'] %}
-                        <span class="badge bg-warning">Utang - {{ t['customer_name'] }}</span>
-                    {% else %}
-                        <span class="badge bg-success">Cash</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Two Separate Tables -->
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <h4>Cash Sales</h4>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions if not t['customer_name'] %}
+                    <tr>
+                        <td>{{ t['product_name'] }}</td>
+                        <td>{{ t['quantity'] }}</td>
+                        <td>₱{{ t['total_amount'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="col-md-6">
+            <h4>Utang Records</h4>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions if t['customer_name'] %}
+                    <tr>
+                        <td>{{ t['customer_name'] }}</td>
+                        <td>{{ t['product_name'] }}</td>
+                        <td>₱{{ t['total_amount'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 </body>
 </html>
