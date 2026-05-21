@@ -52,15 +52,18 @@ def dashboard():
     total_products = c.fetchone()['total']
     c.execute("SELECT COUNT(*) as low FROM products WHERE stock < 10")
     low_stock = c.fetchone()['low']
+    
     c.execute("SELECT SUM(total_amount) as day_sales FROM sales WHERE sale_date = ? AND is_credit = 0", (selected_date,))
     day_sales = c.fetchone()['day_sales'] or 0
     c.execute("SELECT SUM(total_amount) as day_utang FROM sales WHERE sale_date = ? AND is_credit = 1", (selected_date,))
     day_utang = c.fetchone()['day_utang'] or 0
     c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
     total_debt = c.fetchone()['total_debt'] or 0
+    
     c.execute("SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC", (selected_date,))
     transactions = c.fetchall()
     conn.close()
+    
     return render_template('dashboard.html', 
                            total_products=total_products, 
                            low_stock=low_stock,
@@ -166,16 +169,32 @@ def sales():
     conn.close()
     return render_template('sales.html', products=products, sales=sales_list, filter_date=filter_date)
 
-@app.route('/debts')
+@app.route('/debts', methods=['GET', 'POST'])
 def debts():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
+    
+    if request.method == 'POST':
+        debt_id = int(request.form['debt_id'])
+        payment = float(request.form.get('payment', 0))
+        
+        c.execute("SELECT remaining FROM debts WHERE id = ?", (debt_id,))
+        debt = c.fetchone()
+        if debt and payment > 0:
+            new_remaining = max(0, debt['remaining'] - payment)
+            c.execute("UPDATE debts SET remaining = ? WHERE id = ?", (new_remaining, debt_id))
+            conn.commit()
+            flash('Payment recorded successfully!', 'success')
+        return redirect(url_for('debts'))
+    
+    # Unpaid debts
     c.execute("""SELECT id, customer_name, amount, remaining, date 
                  FROM debts WHERE remaining > 0 ORDER BY remaining DESC""")
-    debt_list = c.fetchall()
+    unpaid = c.fetchall()
+    
     conn.close()
-    return render_template('debts.html', debts=debt_list)
+    return render_template('debts.html', debts=unpaid)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
