@@ -188,12 +188,18 @@ def debts():
             flash('Payment recorded successfully!', 'success')
         return redirect(url_for('debts'))
     
-    # Get unpaid debts
+    # Unpaid debts
     c.execute("""SELECT id, customer_name, amount, remaining, date 
                  FROM debts WHERE remaining > 0 ORDER BY remaining DESC""")
-    debts = c.fetchall()
+    unpaid = c.fetchall()
+    
+    # Paid debts (remaining = 0)
+    c.execute("""SELECT customer_name, amount, remaining, date 
+                 FROM debts WHERE remaining = 0 ORDER BY date DESC""")
+    paid = c.fetchall()
+    
     conn.close()
-    return render_template('debts.html', debts=debts)
+    return render_template('debts.html', unpaid=unpaid, paid=paid)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
