@@ -76,22 +76,41 @@ def products():
     conn.close()
     return render_template('products.html', products=products_list, search=search)
 
-@app.route('/add_product', methods=['GET', 'POST'])
-def add_product():
-    if request.method == 'POST':
-        name = request.form['name']
-        category = request.form['category']
-        price = float(request.form['price'])
-        stock = int(request.form['stock'])
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute("INSERT INTO products (name, category, price, stock, last_updated) VALUES (?, ?, ?, ?, ?)",
-                  (name, category, price, stock, datetime.now().strftime("%Y-%m-%d %H:%M")))
-        conn.commit()
-        conn.close()
-        flash('Product added successfully!', 'success')
-        return redirect(url_for('products'))
-    return render_template('add_product.html')
+@app.route('/', methods=['GET'])
+def dashboard():
+    selected_date = request.args.get('date', date.today().isoformat())
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    c.execute("SELECT COUNT(*) as total FROM products")
+    total_products = c.fetchone()['total']
+    
+    c.execute("SELECT COUNT(*) as low FROM products WHERE stock < 10")
+    low_stock = c.fetchone()['low']
+    
+    # Sales on selected date
+    c.execute("SELECT SUM(total_amount) as day_sales FROM sales WHERE sale_date = ?", (selected_date,))
+    day_sales = c.fetchone()['day_sales'] or 0
+    
+    # Total Utang
+    c.execute("SELECT SUM(remaining) as total_debt FROM debts WHERE remaining > 0")
+    total_debt = c.fetchone()['total_debt'] or 0
+    
+    # Transactions on selected date
+    c.execute("""SELECT * FROM sales WHERE sale_date = ? ORDER BY id DESC""", (selected_date,))
+    transactions = c.fetchall()
+    
+    conn.close()
+    
+    return render_template('dashboard.html', 
+                           total_products=total_products, 
+                           low_stock=low_stock,
+                           day_sales=round(day_sales, 2),
+                           total_debt=round(total_debt, 2),
+                           selected_date=selected_date,
+                           transactions=transactions)
 
 @app.route('/update_stock/<int:product_id>', methods=['POST'])
 def update_stock(product_id):
